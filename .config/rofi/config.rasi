@@ -1,0 +1,15 @@
+configuration {
+        modi: "window,drun,ssh,run";
+	show-icons: true;
+	sidebar-mode: true;
+	separator-style: "none";
+	hide-scrollbar: true;
+	color-normal: "#2f343f, #f3f4f5, #393f4d, #82a9b5, #2f343f";
+	color-urgent: "#2f343f, #dc322f, #2f343f, #dc322f, #f3f4f5";
+	color-active: "#2f343f, #268bd2, #2f343f, #268bd2, #f3f4f5";
+	color-window: "#882f343f, #002b36, #2f343f";
+	display-window: "Window";
+	display-run: "Execute";
+	display-drun: "Activate";
+}
+@theme "/home/ostefansson/.config/rofi/themes/sidetab.rasi"
