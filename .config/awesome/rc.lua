@@ -202,7 +202,7 @@ end)
 
 awful.screen.connect_for_each_screen(function(s)
     -- Quake terminal
-    s.quake = lain.util.quake({ app = terminalt, argname = '--class %s', height = 0.8, followtag = true })
+    s.quake = lain.util.quake({ app = terminalt, argname = '--class %s', height = 0.8, followtag = true, maximized = true })
     
     -- Wallpaper
     set_wallpaper(s)
@@ -455,7 +455,7 @@ globalkeys = gears.table.join(
     awful.key({ }, "#105", function () awful.screen.focused().quake:toggle() end,
 	      {description = "show quake menu", group = "terminal"}),
 
-    awful.key({ }, "Print", function () awful.util.spawn_with_shell("import /home/ostefansson/Screenshots/screenshot-`date +%s`.png") end,
+    awful.key({ }, "Print", function () awful.util.spawn_with_shell("import /home/olik/screenshots/screenshot-`date +%s`.png") end,
     		{description = "take screenshot", group = "util"})
 )
 
@@ -584,7 +584,11 @@ awful.rules.rules = {
                      buttons = clientbuttons,
                      screen = awful.screen.preferred,
                      placement = awful.placement.no_overlap+awful.placement.no_offscreen
-     }
+	     }
+    },
+
+    { rule = { instance = "Toolkit", class = "firefox"},
+      properties = { tags = { "1", "2", "3", "4", "5", "6", "7", "8", "9" }}
     },
 
     -- Floating clients.
@@ -618,16 +622,14 @@ awful.rules.rules = {
           "ConfigManager",  -- Thunderbird's about:config.
           "pop-up",       -- e.g. Google Chrome's (detached) Developer Tools.
         }
-      }, properties = { floating = true }},
+      }, properties = { floating = true }
+    },
 
     -- Add titlebars to normal clients and dialogs
     { rule_any = {type = { "normal", "dialog" }
       }, properties = { titlebars_enabled = false }
     },
 
-    -- Set Firefox to always map on the tag named "2" on screen 1.
-    -- { rule = { class = "Firefox" },
-    --   properties = { screen = 1, tag = "2" } },
 }
 -- }}}
 
@@ -688,7 +690,12 @@ end)
 
 -- Enable sloppy focus, so that focus follows mouse.
 client.connect_signal("mouse::enter", function(c)
-    c:emit_signal("request::activate", "mouse_enter", {raise = false})
+     -- checking if we don't currently have focused, or if the current focused is not fullscreen
+     -- (we don't want to change focus for screens that are fullscreen)
+     -- otherwise lazily change the focus
+     if not client.focus or client.focus and not client.focus.fullscreen then
+     	c:emit_signal("request::activate", "mouse_enter", {raise = false})
+     end
 end)
 
 client.connect_signal("focus", function(c) c.border_color = beautiful.border_focus end)
@@ -711,3 +718,8 @@ client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_n
 --         )
 --     end
 -- }
+--
+
+-- prevent urgent from stealing focus, this works but also disabled 'Window' from rofi 
+-- awful.ewmh.add_activate_filter(function() return false end, "ewmh")
+
