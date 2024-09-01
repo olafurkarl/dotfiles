@@ -12,4 +12,4 @@ configuration {
 	display-run: "Execute";
 	display-drun: "Activate";
 }
-@theme "/home/ostefansson/.config/rofi/themes/sidetab.rasi"
+@theme "/home/olik/.config/rofi/themes/sidetab.rasi"
