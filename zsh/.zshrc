@@ -1,4 +1,4 @@
-### aliases
+### aliases 
 alias vim=nvim
 alias ls='ls --color=auto'
 

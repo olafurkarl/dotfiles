@@ -11,3 +11,5 @@
 .config/user-dirs.locale
 zsh/.zcompdump
 zsh/.zcompdump
+zsh/.zhistory
+zsh/.zcompdump
