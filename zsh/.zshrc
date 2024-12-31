@@ -1,5 +1,6 @@
 ### aliases
 alias vim=nvim
+alias ls='ls --color=auto'
 
 ### options
 setopt HIST_SAVE_NO_DUPS         # Do not write a duplicate event to the history file.
@@ -39,3 +40,12 @@ zle -N zle-line-init
 ### keybinds 
 bindkey '^R' history-incremental-search-backward
 bindkey '^[[3~' delete-char
+
+
+# pnpm
+export PNPM_HOME="/home/olik/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end

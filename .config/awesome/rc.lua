@@ -221,8 +221,13 @@ end)
 
 awful.screen.connect_for_each_screen(function(s)
 	-- Quake terminal
-	s.quake =
-		lain.util.quake({ app = terminalt, argname = "--class %s", height = 0.8, followtag = true, maximized = true })
+	s.quake = lain.util.quake({
+		app = terminalt,
+		argname = "--class %s",
+		height = 0.8,
+		followtag = true,
+		maximized = true,
+	})
 
 	-- Wallpaper
 	set_wallpaper(s)

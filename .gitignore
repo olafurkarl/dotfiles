@@ -1,0 +1,13 @@
+.config/discord
+.config/deluge
+.config/dconf
+.config/gtk-2.0
+.config/htop
+.config/pulse
+.config/vlc
+.config/QtProject.conf
+.config/pavucontrol.ini
+.config/user-dirs.dirs
+.config/user-dirs.locale
+zsh/.zcompdump
+zsh/.zcompdump
