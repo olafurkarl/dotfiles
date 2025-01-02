@@ -234,12 +234,12 @@ require("lazy").setup({
 			-- add any options here
 		},
 	},
-	-- {
-	-- 	"iamcco/markdown-preview.nvim",
-	-- 	cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-	-- 	ft = { "markdown" },
-	-- 	build = ":call mkdp#util#install()",
-	-- },
+	{
+		"iamcco/markdown-preview.nvim",
+		cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+		ft = { "markdown" },
+		build = ":call mkdp#util#install()",
+	},
 	-- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
 	"tpope/vim-sleuth", -- Detect tabstop and shiftwidth automatically
 
@@ -439,6 +439,7 @@ require("lazy").setup({
 				builtin.live_grep({
 					grep_open_files = true,
 					prompt_title = "Live Grep in Open Files",
+					hidden = true,
 				})
 			end, { desc = "[S]earch [/] in Open Files" })
 
@@ -916,8 +917,8 @@ require("lazy").setup({
 				"html",
 				"lua",
 				"luadoc",
-				-- "markdown",
-				-- "markdown_inline",
+				"markdown",
+				"markdown_inline",
 				"query",
 				"vim",
 				"vimdoc",
@@ -955,7 +956,7 @@ require("lazy").setup({
 	require("kickstart.plugins.lint"),
 	require("kickstart.plugins.autopairs"),
 	require("kickstart.plugins.neo-tree"),
-	require("kickstart.plugins.gitsigns"), -- adds gitsigns recommend keymaps
+	require("kickstart.plugins.gitsigns"),
 
 	-- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
 	--    This is the easiest way to modularize your config.
