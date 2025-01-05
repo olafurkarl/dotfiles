@@ -1,60 +1,6 @@
 --[[
 
-=====================================================================
-==================== READ THIS BEFORE CONTINUING ====================
-=====================================================================
-========                                    .-----.          ========
-========         .----------------------.   | === |          ========
-========         |.-""""""""""""""""""-.|   |-----|          ========
-========         ||                    ||   | === |          ========
-========         ||   KICKSTART.NVIM   ||   |-----|          ========
-========         ||                    ||   | === |          ========
-========         ||                    ||   |-----|          ========
-========         ||:Tutor              ||   |:::::|          ========
-========         |'-..................-'|   |____o|          ========
-========         `"")----------------(""`   ___________      ========
-========        /::::::::::|  |::::::::::\  \ no mouse \     ========
-========       /:::========|  |==hjkl==:::\  \ required \    ========
-========      '""""""""""""'  '""""""""""""'  '""""""""""'   ========
-========                                                     ========
-=====================================================================
-=====================================================================
-
-What is Kickstart?
-
-  Kickstart.nvim is *not* a distribution.
-
-  Kickstart.nvim is a starting point for your own configuration.
-    The goal is that you can read every line of code, top-to-bottom, understand
-    what your configuration is doing, and modify it to suit your needs.
-
-    Once you've done that, you can start exploring, configuring and tinkering to
-    make Neovim your own! That might mean leaving Kickstart just the way it is for a while
-    or immediately breaking it into modular pieces. It's up to you!
-
-    If you don't know anything about Lua, I recommend taking some time to read through
-    a guide. One possible example which will only take 10-15 minutes:
-      - https://learnxinyminutes.com/docs/lua/
-
-    After understanding a bit more about Lua, you can use `:help lua-guide` as a
-    reference for how Neovim integrates Lua.
-    - :help lua-guide
-    - (or HTML version): https://neovim.io/doc/user/lua-guide.html
-
 Kickstart Guide:
-
-  TODO: The very first thing you should do is to run the command `:Tutor` in Neovim.
-
-    If you don't know what this means, type the following:
-      - <escape key>
-      - :
-      - Tutor
-      - <enter key>
-
-    (If you already know the Neovim basics, you can skip this step.)
-
-  Once you've completed that, you can continue working through **AND READING** the rest
-  of the kickstart init.lua.
 
   Next, run AND READ `:help`.
     This will open up a help window with some basic information
@@ -102,13 +48,17 @@ vim.g.have_nerd_font = true
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = "a"
 
 -- Don't show the mode, since it's already in the status line
 vim.opt.showmode = false
+
+-- vim.opt.tabstop = 2
+-- vim.opt.shiftwidth = 2
+-- vim.opt.softtabstop = 2
 
 -- Sync clipboard between OS and Neovim.
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
@@ -241,7 +191,7 @@ require("lazy").setup({
 		build = ":call mkdp#util#install()",
 	},
 	-- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
-	"tpope/vim-sleuth", -- Detect tabstop and shiftwidth automatically
+	--"tpope/vim-sleuth", -- Detect tabstop and shiftwidth automatically
 
 	-- NOTE: Plugins can also be added by using a table,
 	-- with the first argument being the link and the following
@@ -399,7 +349,17 @@ require("lazy").setup({
 				--     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
 				--   },
 				-- },
-				-- pickers = {}
+				pickers = {
+					find_files = {
+						hidden = true,
+					},
+					grep_string = {
+						additional_args = { "--hidden" },
+					},
+					live_grep = {
+						additional_args = { "--hidden" },
+					},
+				},
 				extensions = {
 					["ui-select"] = {
 						require("telescope.themes").get_dropdown(),
@@ -418,7 +378,9 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>sf", builtin.find_files, { desc = "[S]earch [F]iles" })
 			vim.keymap.set("n", "<leader>ss", builtin.builtin, { desc = "[S]earch [S]elect Telescope" })
 			vim.keymap.set("n", "<leader>sw", builtin.grep_string, { desc = "[S]earch current [W]ord" })
-			vim.keymap.set("n", "<leader>sg", builtin.live_grep, { desc = "[S]earch by [G]rep" })
+			vim.keymap.set("n", "<leader>sg", function()
+				builtin.live_grep({ hidden = true })
+			end, { desc = "[S]earch by [G]rep" })
 			vim.keymap.set("n", "<leader>sd", builtin.diagnostics, { desc = "[S]earch [D]iagnostics" })
 			vim.keymap.set("n", "<leader>sr", builtin.resume, { desc = "[S]earch [R]esume" })
 			vim.keymap.set("n", "<leader>s.", builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
@@ -566,7 +528,7 @@ require("lazy").setup({
 
 					-- The following two autocommands are used to highlight references of the
 					-- word under your cursor when your cursor rests there for a little while.
-					--    See `:help CursorHold` for information about when this is executed
+					--    See `:help CursorHold` for information about when this is executedmason
 					--
 					-- When you move your cursor, the highlights will be cleared (the second autocommand).
 					local client = vim.lsp.get_client_by_id(event.data.client_id)
@@ -669,6 +631,7 @@ require("lazy").setup({
 			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
 			require("mason-lspconfig").setup({
+				ensure_installed = { "ts_ls", "eslint", "html", "cssls" },
 				handlers = {
 					function(server_name)
 						local server = servers[server_name] or {}
@@ -711,7 +674,7 @@ require("lazy").setup({
 					lsp_format_opt = "fallback"
 				end
 				return {
-					timeout_ms = 500,
+					timeout_ms = 2500,
 					lsp_format = lsp_format_opt,
 				}
 			end,
@@ -721,7 +684,8 @@ require("lazy").setup({
 				-- python = { "isort", "black" },
 				--
 				-- You can use 'stop_after_first' to run the first available formatter from the list
-				-- javascript = { "prettierd", "prettier", stop_after_first = true },
+				javascript = { "prettierd", "prettier", stop_after_first = true },
+				typescript = { "prettierd", "prettier", stop_after_first = true },
 			},
 		},
 	},
