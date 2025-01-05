@@ -71,6 +71,9 @@ end)
 -- Enable break indent
 vim.opt.breakindent = true
 
+-- vim.opt.autoindent = true
+-- vim.opt.smartindent = true
+
 -- Save undo history
 vim.opt.undofile = true
 
@@ -191,7 +194,7 @@ require("lazy").setup({
 		build = ":call mkdp#util#install()",
 	},
 	-- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
-	--"tpope/vim-sleuth", -- Detect tabstop and shiftwidth automatically
+	"tpope/vim-sleuth", -- Detect tabstop and shiftwidth automatically
 
 	-- NOTE: Plugins can also be added by using a table,
 	-- with the first argument being the link and the following
@@ -886,6 +889,8 @@ require("lazy").setup({
 				"query",
 				"vim",
 				"vimdoc",
+				"typescript",
+				"tsx",
 			},
 			-- Autoinstall languages that are not installed
 			auto_install = true,
@@ -894,9 +899,15 @@ require("lazy").setup({
 				-- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
 				--  If you are experiencing weird indenting issues, add the language to
 				--  the list of additional_vim_regex_highlighting and disabled languages for indent.
-				additional_vim_regex_highlighting = { "ruby" },
+				additional_vim_regex_highlighting = false,
+				--[[ disable = { "typescript" }, ]]
 			},
-			indent = { enable = true, disable = { "ruby" } },
+			indent = {
+				enable = true,
+				disable = {
+					--"typescript"
+				},
+			},
 		},
 		-- There are additional nvim-treesitter modules that you can use to interact
 		-- with nvim-treesitter. You should go explore a few and see what interests you:
@@ -905,7 +916,9 @@ require("lazy").setup({
 		--    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
 		--    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
 	},
-
+	{
+		"nvim-treesitter/nvim-treesitter-context",
+	},
 	-- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
 	-- init.lua. If you want these files, they are in the repository, so you can just download them and
 	-- place them in the correct locations.
@@ -921,6 +934,8 @@ require("lazy").setup({
 	require("kickstart.plugins.autopairs"),
 	require("kickstart.plugins.neo-tree"),
 	require("kickstart.plugins.gitsigns"),
+
+	require("custom.overrides.rename"),
 
 	-- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
 	--    This is the easiest way to modularize your config.

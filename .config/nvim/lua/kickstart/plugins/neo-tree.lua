@@ -14,6 +14,11 @@ return {
 		{ "\\", ":Neotree reveal<CR>", desc = "NeoTree reveal", silent = true },
 	},
 	opts = {
+		sources = {
+			"filesystem",
+			"buffers",
+			"git_status",
+		},
 		filesystem = {
 			follow_current_file = { enabled = true },
 			commands = {
