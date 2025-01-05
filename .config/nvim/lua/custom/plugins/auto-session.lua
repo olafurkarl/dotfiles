@@ -5,7 +5,7 @@ return {
 			log_level = "error",
 			auto_session_suppress_dirs = { "~/", "~/projects", "~/Downloads", "/" },
 			pre_save_cmds = { "tabdo Neotree close" },
-			post_restore_cmds = { "Neotree" },
+			-- post_restore_cmds = { "Neotree" },
 		})
 	end,
 }
