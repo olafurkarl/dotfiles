@@ -1,13 +1,18 @@
+-- A signature is what describes a symbol in code, like a typescript type
+-- vim.print(event)
 return {
-	"ray-x/lsp_signature.nvim",
-	event = "InsertEnter",
+
+	"folke/noice.nvim",
+	event = "VeryLazy",
 	opts = {
-		bind = true,
-		handler_opts = {
-			border = "rounded",
-		},
+		-- add any options here
 	},
-	config = function(_, opts)
-		require("lsp_signature").setup(opts)
-	end,
+	dependencies = {
+		-- if you lazy-load any plugin below, make sure to add proper `module="..."` entries
+		"MunifTanjim/nui.nvim",
+		-- OPTIONAL:
+		--   `nvim-notify` is only needed, if you want to use the notification view.
+		--   If not available, we use `mini` as the fallback
+		"rcarriga/nvim-notify",
+	},
 }

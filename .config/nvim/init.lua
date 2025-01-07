@@ -56,6 +56,10 @@ vim.opt.mouse = "a"
 -- Don't show the mode, since it's already in the status line
 vim.opt.showmode = false
 
+-- Enable keymap to show diagnostics for errors
+local bufopts = { noremap = true, silent = true, buffer = bufnr }
+vim.keymap.set("n", "<leader>e", vim.diagnostic.open_float, bufopts)
+
 -- vim.opt.tabstop = 2
 -- vim.opt.shiftwidth = 2
 -- vim.opt.softtabstop = 2
@@ -362,6 +366,13 @@ require("lazy").setup({
 					live_grep = {
 						additional_args = { "--hidden" },
 					},
+					buffers = {
+						mappings = {
+							n = {
+								["<C-d>"] = require("telescope.actions").delete_buffer,
+							},
+						},
+					},
 				},
 				extensions = {
 					["ui-select"] = {
@@ -446,41 +457,18 @@ require("lazy").setup({
 			"hrsh7th/cmp-nvim-lsp",
 		},
 		config = function()
-			-- Brief aside: **What is LSP?**
+			-- Make signature appear for typescript files once cursor has hovered for a certain time
+			-- vim.api.nvim_create_autocmd("CursorHold", {
+			-- 	pattern = "*.ts",
 			--
-			-- LSP is an initialism you've probably heard, but might not understand what it is.
-			--
-			-- LSP stands for Language Server Protocol. It's a protocol that helps editors
-			-- and language tooling communicate in a standardized fashion.
-			--
-			-- In general, you have a "server" which is some tool built to understand a particular
-			-- language (such as `gopls`, `lua_ls`, `rust_analyzer`, etc.). These Language Servers
-			-- (sometimes called LSP servers, but that's kind of like ATM Machine) are standalone
-			-- processes that communicate with some "client" - in this case, Neovim!
-			--
-			-- LSP provides Neovim with features like:
-			--  - Go to definition
-			--  - Find references
-			--  - Autocompletion
-			--  - Symbol Search
-			--  - and more!
-			--
-			-- Thus, Language Servers are external tools that must be installed separately from
-			-- Neovim. This is where `mason` and related plugins come into play.
-			--
-			-- If you're wondering about lsp vs treesitter, you can check out the wonderfully
-			-- and elegantly composed help section, `:help lsp-vs-treesitter`
-
-			--  This function gets run when an LSP attaches to a particular buffer.
-			--    That is to say, every time a new file is opened that is associated with
-			--    an lsp (for example, opening `main.rs` is associated with `rust_analyzer`) this
-			--    function will be executed to configure the current buffer
+			-- 	callback = function(event)
+			-- 		vim.print(event)
+			-- 		vim.lsp.buf.hover()
+			-- 	end,
+			-- })
 			vim.api.nvim_create_autocmd("LspAttach", {
 				group = vim.api.nvim_create_augroup("kickstart-lsp-attach", { clear = true }),
 				callback = function(event)
-					-- NOTE: Remember that Lua is a real programming language, and as such it is possible
-					-- to define small helper and utility functions so you don't have to repeat yourself.
-					--
 					-- In this case, we create a function that lets us more easily define mappings specific
 					-- for LSP related items. It sets the mode, buffer and description for us each time.
 					local map = function(keys, func, desc, mode)
@@ -524,6 +512,8 @@ require("lazy").setup({
 					-- Execute a code action, usually your cursor needs to be on top of an error
 					-- or a suggestion from your LSP for this to activate.
 					map("<leader>ca", vim.lsp.buf.code_action, "[C]ode [A]ction", { "n", "x" })
+
+					map("<leader>cs", vim.lsp.buf.hover, "[C]ode [S]ignature", "n")
 
 					-- WARN: This is not Goto Definition, this is Goto Declaration.
 					--  For example, in C this would take you to the header.
@@ -634,7 +624,12 @@ require("lazy").setup({
 			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
 			require("mason-lspconfig").setup({
-				ensure_installed = { "ts_ls", "eslint", "html", "cssls" },
+				ensure_installed = {
+					-- "ts_ls",
+					"eslint",
+					"html",
+					"cssls",
+				},
 				handlers = {
 					function(server_name)
 						local server = servers[server_name] or {}
@@ -648,7 +643,6 @@ require("lazy").setup({
 			})
 		end,
 	},
-
 	{ -- Autoformat
 		"stevearc/conform.nvim",
 		event = { "BufWritePre" },

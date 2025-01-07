@@ -12,7 +12,15 @@ return {
 		vim.api.nvim_create_autocmd("DiagnosticChanged", {
 			callback = function(args)
 				local diagnostics = args.data.diagnostics
-				if #diagnostics > 0 then
+				local filtered = {}
+
+				for _, diag in ipairs(diagnostics) do
+					if diag["severity"] == 1 then
+						table.insert(filtered, diag)
+					end
+				end
+
+				if #filtered > 0 then
 					MiniMap.open()
 				else
 					MiniMap.close()
