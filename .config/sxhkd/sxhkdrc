@@ -1,0 +1,2 @@
+XF86AudioPlay
+	playerctl play-pause
