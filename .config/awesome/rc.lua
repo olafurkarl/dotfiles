@@ -18,26 +18,26 @@ local menubar = require("menubar")
 local hotkeys_popup = require("awful.hotkeys_popup")
 local lain = require("lain")
 
--- local battery_widget = require("battery-widget")
--- local battery = battery_widget {
---     ac = "AC",
---     adapter = "BAT0",
---     ac_prefix = "🔌",
---     battery_prefix = "🔋",
---     percent_colors = {
---         { 25, "red"   },
---         { 50, "orange"},
---         {999, "green" },
---     },
---     listen = true,
---     timeout = 10,
---     widget_text = "${AC_BAT}${color_on}${percent}%${color_off}",
---     tooltip_text = "Battery ${state}${time_est}\nCapacity: ${capacity_percent}%",
---     alert_threshold = 5,
---     alert_timeout = 0,
---     alert_title = "Low battery!",
---     alert_text = "${AC_BAT}${time_est}"
--- }
+local battery_widget = require("battery-widget")
+local battery = battery_widget({
+	ac = "AC",
+	adapter = "BAT0",
+	ac_prefix = "🔌",
+	battery_prefix = "🔋",
+	percent_colors = {
+		{ 25, "red" },
+		{ 50, "orange" },
+		{ 999, "green" },
+	},
+	listen = true,
+	timeout = 10,
+	widget_text = "${AC_BAT}${color_on}${percent}%${color_off}",
+	tooltip_text = "Battery ${state}${time_est}\nCapacity: ${capacity_percent}%",
+	alert_threshold = 5,
+	alert_timeout = 0,
+	alert_title = "Low battery!",
+	alert_text = "${AC_BAT}${time_est}",
+})
 
 -- Enable hotkeys help widget for VIM and other apps
 -- when client with a matching name is opened:
