@@ -1,34 +1,22 @@
---[[
-
-Kickstart Guide:
-
-  Next, run AND READ `:help`.
-    This will open up a help window with some basic information
-    about reading, navigating and searching the builtin help documentation.
-
-    This should be the first place you go to look when you're stuck or confused
-    with something. It's one of my favorite Neovim features.
-
-    MOST IMPORTANTLY, we provide a keymap "<space>sh" to [s]earch the [h]elp documentation,
-    which is very useful when you're not exactly sure of what you're looking for.
-
-  I have left several `:help X` comments throughout the init.lua
-    These are hints about where to find more information about the relevant settings,
-    plugins or Neovim features used in Kickstart.
-
-   NOTE: Look for lines like this
-
-    Throughout the file. These are for you, the reader, to help you understand what is happening.
-    Feel free to delete them once you know what you're doing, but they should serve as a guide
-    for when you are first encountering a few different constructs in your Neovim config.
-
-If you experience any errors while trying to install kickstart, run `:checkhealth` for more info.
-
-I hope you enjoy your Neovim journey,
-- TJ
-
-P.S. You can delete this when you're done too. It's your config now! :)
---]]
+-- better error messages
+vim.diagnostic.config({
+	virtual_text = {
+		source = true,
+		format = function(diagnostic)
+			if diagnostic.user_data and diagnostic.user_data.code then
+				return string.format("%s %s", diagnostic.user_data.code, diagnostic.message)
+			else
+				return diagnostic.message
+			end
+		end,
+	},
+	signs = true,
+	float = {
+		header = "Diagnostics",
+		source = true,
+		border = "rounded",
+	},
+})
 
 -- Set <space> as the leader key
 -- See `:help mapleader`
@@ -326,25 +314,7 @@ require("lazy").setup({
 			{ "nvim-tree/nvim-web-devicons", enabled = vim.g.have_nerd_font },
 		},
 		config = function()
-			-- Telescope is a fuzzy finder that comes with a lot of different things that
-			-- it can fuzzy find! It's more than just a "file finder", it can search
-			-- many different aspects of Neovim, your workspace, LSP, and more!
-			--
-			-- The easiest way to use Telescope, is to start by doing something like:
-			--  :Telescope help_tags
-			--
-			-- After running this command, a window will open up and you're able to
-			-- type in the prompt window. You'll see a list of `help_tags` options and
-			-- a corresponding preview of the help.
-			--
-			-- Two important keymaps to use while in Telescope are:
-			--  - Insert mode: <c-/>
-			--  - Normal mode: ?
-			--
-			-- This opens a window that shows you all of the keymaps for the current
-			-- Telescope picker. This is really useful to discover what Telescope can
-			-- do as well as how to actually do it!
-
+			local image_preview = require("custom.functions.telescope_image_preview").telescope_image_preview()
 			-- [[ Configure Telescope ]]
 			-- See `:help telescope` and `:help telescope.setup()`
 			require("telescope").setup({
@@ -378,6 +348,10 @@ require("lazy").setup({
 					["ui-select"] = {
 						require("telescope.themes").get_dropdown(),
 					},
+				},
+				defaults = {
+					file_previewer = image_preview.file_previewer,
+					buffer_previewer_maker = image_preview.buffer_previewer_maker,
 				},
 			})
 
@@ -466,6 +440,25 @@ require("lazy").setup({
 			-- 		vim.lsp.buf.hover()
 			-- 	end,
 			-- })
+
+			require("workspace-diagnostics").setup({
+				workspace_files = function()
+					local gitPath = vim.fn.systemlist("git rev-parse --show-toplevel")[1]
+					local workspace_files = vim.fn.split(vim.fn.system("git ls-files " .. gitPath), "\n")
+					local result = {}
+
+					local ignore = { "tools/create-package/template/jest.config.ts" }
+					for _, workspaceFile in ipairs(workspace_files) do
+						for _, ignoredFile in ipairs(ignore) do
+							if not string.find(workspaceFile, ignoredFile, 1, true) then
+								table.insert(result, workspaceFile)
+							end
+						end
+					end
+
+					return result
+				end,
+			})
 			vim.api.nvim_create_autocmd("LspAttach", {
 				group = vim.api.nvim_create_augroup("kickstart-lsp-attach", { clear = true }),
 				callback = function(event)
@@ -578,18 +571,15 @@ require("lazy").setup({
 			--  - settings (table): Override the default settings passed when initializing the server.
 			--        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
 			local servers = {
-				-- clangd = {},
-				-- gopls = {},
-				-- pyright = {},
-				-- rust_analyzer = {},
-				-- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-				--
-				-- Some languages (like typescript) have entire language plugins that can be useful:
-				--    https://github.com/pmizio/typescript-tools.nvim
-				--
-				-- But for many setups, the LSP (`tsserver`) will work just fine
-				-- tsserver = {},
-				--
+				ts_ls = {},
+				svelte = {
+					capabilities = {
+						workspace = {
+							didChangeWatchedFiles = false,
+						},
+					},
+					filetypes = { "svelte" },
+				},
 
 				lua_ls = {
 					-- cmd = {...},
@@ -624,11 +614,13 @@ require("lazy").setup({
 			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
 			require("mason-lspconfig").setup({
+				automatic_installation = false,
 				ensure_installed = {
-					-- "ts_ls",
+					"ts_ls",
 					"eslint",
 					"html",
 					"cssls",
+					"svelte",
 				},
 				handlers = {
 					function(server_name)
@@ -637,7 +629,31 @@ require("lazy").setup({
 						-- by the server configuration above. Useful when disabling
 						-- certain features of an LSP (for example, turning off formatting for tsserver)
 						server.capabilities = vim.tbl_deep_extend("force", {}, capabilities, server.capabilities or {})
-						require("lspconfig")[server_name].setup(server)
+						if server_name == "svelte" then
+							require("lspconfig")[server_name].setup({
+								on_attach = function(client, bufnr)
+									require("workspace-diagnostics").populate_workspace_diagnostics(client, bufnr)
+									vim.api.nvim_create_autocmd({ "BufWritePost" }, {
+										pattern = { "*.ts" },
+										group = vim.api.nvim_create_augroup(
+											"svelte_ondidchangetsorjsfile",
+											{ clear = true }
+										),
+										callback = function(ctx)
+											client.notify("$/onDidChangeTsOrJsFile", { uri = ctx.match })
+										end,
+									})
+								end,
+							})
+						elseif server_name == "ts_ls" then
+							require("lspconfig")[server_name].setup({
+								on_attach = function(client, bufnr)
+									require("workspace-diagnostics").populate_workspace_diagnostics(client, bufnr)
+								end,
+							})
+						else
+							require("lspconfig")[server_name].setup(server)
+						end
 					end,
 				},
 			})
@@ -683,6 +699,9 @@ require("lazy").setup({
 				-- You can use 'stop_after_first' to run the first available formatter from the list
 				javascript = { "prettierd", "prettier", stop_after_first = true },
 				typescript = { "prettierd", "prettier", stop_after_first = true },
+				typescriptreact = { "prettierd", "prettier", stop_after_first = true },
+				json = { "prettierd", "prettier", stop_after_first = true },
+				jsonc = { "prettierd", "prettier", stop_after_first = true },
 			},
 		},
 	},
@@ -912,6 +931,9 @@ require("lazy").setup({
 	},
 	{
 		"nvim-treesitter/nvim-treesitter-context",
+		opts = {
+			max_lines = 1,
+		},
 	},
 	-- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
 	-- init.lua. If you want these files, they are in the repository, so you can just download them and

@@ -22,7 +22,7 @@ return {
 				},
 			})
 			local neotest = require("neotest")
-			-- vim.keymap.set('n', '<leader>Tr', neotest.run.run())
+			vim.keymap.set("n", "<leader>Ts", neotest.summary(), { desc = "[T]est [s]ummary" })
 			-- vim.keymap.set('n', '<leader>td', require('neotest').run.run { strategy = 'dap' })
 		end,
 		keys = {
