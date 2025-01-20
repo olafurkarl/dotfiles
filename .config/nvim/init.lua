@@ -1,23 +1,3 @@
--- better error messages
-vim.diagnostic.config({
-	virtual_text = {
-		source = true,
-		format = function(diagnostic)
-			if diagnostic.user_data and diagnostic.user_data.code then
-				return string.format("%s %s", diagnostic.user_data.code, diagnostic.message)
-			else
-				return diagnostic.message
-			end
-		end,
-	},
-	signs = true,
-	float = {
-		header = "Diagnostics",
-		source = true,
-		border = "rounded",
-	},
-})
-
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
@@ -34,6 +14,7 @@ vim.g.have_nerd_font = true
 
 -- Make line numbers default
 vim.opt.number = true
+
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
 vim.opt.relativenumber = true
@@ -47,7 +28,6 @@ vim.opt.showmode = false
 -- Enable keymap to show diagnostics for errors
 local bufopts = { noremap = true, silent = true, buffer = bufnr }
 vim.keymap.set("n", "<leader>e", vim.diagnostic.open_float, bufopts)
-
 -- vim.opt.tabstop = 2
 -- vim.opt.shiftwidth = 2
 -- vim.opt.softtabstop = 2
@@ -351,6 +331,7 @@ require("lazy").setup({
 				},
 				defaults = {
 					file_previewer = image_preview.file_previewer,
+					grep_previewer = image_preview.grep_previewer,
 					buffer_previewer_maker = image_preview.buffer_previewer_maker,
 				},
 			})
@@ -372,7 +353,14 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>sd", builtin.diagnostics, { desc = "[S]earch [D]iagnostics" })
 			vim.keymap.set("n", "<leader>sr", builtin.resume, { desc = "[S]earch [R]esume" })
 			vim.keymap.set("n", "<leader>s.", builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
-			vim.keymap.set("n", "<leader><leader>", builtin.buffers, { desc = "[ ] Find existing buffers" })
+			vim.keymap.set("n", "<leader><leader>", function()
+				builtin.buffers({
+					show_all_buffers = true,
+					ignore_current_buffer = true,
+					only_cwd = true,
+					sort_lastused = true,
+				})
+			end, { desc = "[ ] Find existing buffers" })
 
 			-- Slightly advanced example of overriding default behavior and theme
 			vim.keymap.set("n", "<leader>/", function()
@@ -430,6 +418,7 @@ require("lazy").setup({
 			-- Allows extra capabilities provided by nvim-cmp
 			"hrsh7th/cmp-nvim-lsp",
 		},
+		opts = {},
 		config = function()
 			-- Make signature appear for typescript files once cursor has hovered for a certain time
 			-- vim.api.nvim_create_autocmd("CursorHold", {
@@ -441,24 +430,24 @@ require("lazy").setup({
 			-- 	end,
 			-- })
 
-			require("workspace-diagnostics").setup({
-				workspace_files = function()
-					local gitPath = vim.fn.systemlist("git rev-parse --show-toplevel")[1]
-					local workspace_files = vim.fn.split(vim.fn.system("git ls-files " .. gitPath), "\n")
-					local result = {}
-
-					local ignore = { "tools/create-package/template/jest.config.ts" }
-					for _, workspaceFile in ipairs(workspace_files) do
-						for _, ignoredFile in ipairs(ignore) do
-							if not string.find(workspaceFile, ignoredFile, 1, true) then
-								table.insert(result, workspaceFile)
-							end
-						end
-					end
-
-					return result
-				end,
-			})
+			-- require("workspace-diagnostics").setup({
+			-- 	workspace_files = function()
+			-- 		local gitPath = vim.fn.systemlist("git rev-parse --show-toplevel")[1]
+			-- 		local workspace_files = vim.fn.split(vim.fn.system("git ls-files " .. gitPath), "\n")
+			-- 		local result = {}
+			--
+			-- 		local ignore = { "tools/create-package/template/jest.config.ts" }
+			-- 		for _, workspaceFile in ipairs(workspace_files) do
+			-- 			for _, ignoredFile in ipairs(ignore) do
+			-- 				if not string.find(workspaceFile, ignoredFile, 1, true) then
+			-- 					table.insert(result, workspaceFile)
+			-- 				end
+			-- 			end
+			-- 		end
+			--
+			-- 		return result
+			-- 	end,
+			-- })
 			vim.api.nvim_create_autocmd("LspAttach", {
 				group = vim.api.nvim_create_augroup("kickstart-lsp-attach", { clear = true }),
 				callback = function(event)
@@ -571,7 +560,24 @@ require("lazy").setup({
 			--  - settings (table): Override the default settings passed when initializing the server.
 			--        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
 			local servers = {
-				ts_ls = {},
+				ts_ls = {
+					on_attach = function(client, bufnr)
+						-- require("workspace-diagnostics").populate_workspace_diagnostics(client, bufnr)
+						client.notify("workspace/didChangeConfiguration", {
+							settings = {
+								typescript = {
+									format = { semicolons = "insert" },
+								},
+							},
+						})
+					end,
+					init_options = {
+						hostInfo = "neovim",
+						preferences = {
+							quotePreference = "single",
+						},
+					},
+				},
 				svelte = {
 					capabilities = {
 						workspace = {
@@ -632,7 +638,7 @@ require("lazy").setup({
 						if server_name == "svelte" then
 							require("lspconfig")[server_name].setup({
 								on_attach = function(client, bufnr)
-									require("workspace-diagnostics").populate_workspace_diagnostics(client, bufnr)
+									-- require("workspace-diagnostics").populate_workspace_diagnostics(client, bufnr)
 									vim.api.nvim_create_autocmd({ "BufWritePost" }, {
 										pattern = { "*.ts" },
 										group = vim.api.nvim_create_augroup(
@@ -643,12 +649,6 @@ require("lazy").setup({
 											client.notify("$/onDidChangeTsOrJsFile", { uri = ctx.match })
 										end,
 									})
-								end,
-							})
-						elseif server_name == "ts_ls" then
-							require("lspconfig")[server_name].setup({
-								on_attach = function(client, bufnr)
-									require("workspace-diagnostics").populate_workspace_diagnostics(client, bufnr)
 								end,
 							})
 						else
@@ -726,13 +726,39 @@ require("lazy").setup({
 					-- `friendly-snippets` contains a variety of premade snippets.
 					--    See the README about individual language/framework/plugin snippets:
 					--    https://github.com/rafamadriz/friendly-snippets
-					-- {
-					--   'rafamadriz/friendly-snippets',
-					--   config = function()
-					--     require('luasnip.loaders.from_vscode').lazy_load()
-					--   end,
-					-- },
+					{
+						"rafamadriz/friendly-snippets",
+						config = function()
+							require("luasnip.loaders.from_vscode").lazy_load()
+						end,
+					},
+					{
+						"solidjs-community/solid-snippets",
+					},
 				},
+				config = function()
+					require("luasnip.loaders.from_vscode").lazy_load()
+					local ls = require("luasnip")
+					ls.config.set_config({
+						region_check_events = "InsertEnter",
+						delete_check_events = "InsertLeave",
+					})
+					vim.api.nvim_set_keymap("i", "<C-n>", "<Plug>luasnip-next-choice", {})
+					vim.api.nvim_set_keymap("s", "<C-n>", "<Plug>luasnip-next-choice", {})
+					vim.api.nvim_set_keymap("i", "<C-p>", "<Plug>luasnip-prev-choice", {})
+					vim.api.nvim_set_keymap("s", "<C-p>", "<Plug>luasnip-prev-choice", {})
+					vim.keymap.set({ "i" }, "<C-K>", function()
+						ls.expand()
+					end, { silent = true })
+
+					vim.keymap.set({ "i", "s" }, "<C-p>", function()
+						ls.jump(1)
+					end, { silent = true })
+
+					vim.keymap.set({ "i", "s" }, "<C-n>", function()
+						ls.jump(-1)
+					end, { silent = true })
+				end,
 			},
 			"saadparwaiz1/cmp_luasnip",
 

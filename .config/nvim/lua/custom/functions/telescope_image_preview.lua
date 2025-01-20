@@ -15,6 +15,9 @@ function telescope_image_preview()
 	local is_supported_image = function(filepath)
 		local split_path = vim.split(filepath:lower(), ".", { plain = true })
 		local extension = split_path[#split_path]
+		vim.print("split_path", split_path)
+		vim.print("extention", extension)
+		vim.print("vim.tbl_contains", vim.tbl_contains(supported_images, extension))
 		return vim.tbl_contains(supported_images, extension)
 	end
 
@@ -29,6 +32,7 @@ function telescope_image_preview()
 	end
 
 	local create_image = function(filepath, winid, bufnr)
+		vim.print("calling create_image")
 		image = image_api.hijack_buffer(filepath, winid, bufnr)
 
 		if not image then
@@ -116,7 +120,10 @@ function telescope_image_preview()
 		end
 	end
 
-	return { buffer_previewer_maker = buffer_previewer_maker, file_previewer = file_previewer.new }
+	return {
+		buffer_previewer_maker = buffer_previewer_maker,
+		file_previewer = file_previewer.new,
+	}
 end
 
 return {
