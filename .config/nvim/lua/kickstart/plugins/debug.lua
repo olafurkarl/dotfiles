@@ -23,6 +23,7 @@ return {
 
 		-- Add your own debuggers here
 		"leoluz/nvim-dap-go",
+		"mxsdev/nvim-dap-vscode-js",
 	},
 	keys = function(_, keys)
 		local dap = require("dap")
@@ -76,11 +77,11 @@ return {
 			icons = { expanded = "▾", collapsed = "▸", current_frame = "*" },
 			controls = {
 				icons = {
-					pause = "⏸",
-					play = "▶",
-					step_into = "⏎",
-					step_over = "⏭",
-					step_out = "⏮",
+					pause = "⏸ (F5)",
+					play = "▶ (F5)",
+					step_into = "⏎ (F1)",
+					step_over = "⏭ (F2)",
+					step_out = "⏮ (F3)",
 					step_back = "b",
 					run_last = "▶▶",
 					terminate = "⏹",
@@ -93,13 +94,52 @@ return {
 		dap.listeners.before.event_terminated["dapui_config"] = dapui.close
 		dap.listeners.before.event_exited["dapui_config"] = dapui.close
 
-		-- Install golang specific config
-		require("dap-go").setup({
-			delve = {
-				-- On Windows delve must be run attached or it crashes.
-				-- See https://github.com/leoluz/nvim-dap-go/blob/main/README.md#configuring
-				detached = vim.fn.has("win32") == 0,
+		local function join_paths(...)
+			local result = table.concat({ ... }, "/")
+			return result
+		end
+
+		local function get_debugger_path()
+			local lazy_avail, lazy_config = pcall(require, "lazy.core.config")
+			return join_paths(lazy_config.defaults.root, "vscode-js-debug/dist")
+		end
+		local function get_pkg_path(pkg, path)
+			pcall(require, "mason")
+			local root = vim.env.MASON or (vim.fn.stdpath("data") .. "/mason")
+			path = path or ""
+			local ret = root .. "/packages/" .. pkg .. "/" .. path
+			return ret
+		end
+
+		dap.adapters["pwa-node"] = {
+			type = "server",
+			host = "localhost",
+			port = "${port}",
+			executable = {
+				command = "node",
+				args = { get_pkg_path("js-debug-adapter", "/js-debug/src/dapDebugServer.js"), "${port}" },
 			},
-		})
+		}
+		--
+		-- dap.adapters["node"] = {
+		-- 	type = "server",
+		-- 	host = "localhost",
+		-- 	port = "${port}",
+		-- 	executable = {
+		-- 		command = "node",
+		-- 		args = { get_debugger_path(), "${port}" },
+		-- 	},
+		-- }
+		-- dap.adapters["node"] = function(cb, config)
+		-- 	if config.type == "node" then
+		-- 		config.type = "pwa-node"
+		-- 	end
+		-- 	local nativeAdapter = dap.adapters["pwa-node"]
+		-- 	if type(nativeAdapter) == "function" then
+		-- 		nativeAdapter(cb, config)
+		-- 	else
+		-- 		cb(nativeAdapter)
+		-- 	end
+		-- end
 	end,
 }
