@@ -921,6 +921,7 @@ require("lazy").setup({
 				"c",
 				"diff",
 				"html",
+				"http",
 				"lua",
 				"luadoc",
 				"markdown",
