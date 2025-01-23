@@ -1,5 +1,4 @@
 -- A signature is what describes a symbol in code, like a typescript type
--- vim.print(event)
 return {
 
 	"folke/noice.nvim",
