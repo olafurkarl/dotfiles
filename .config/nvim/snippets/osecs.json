@@ -1,0 +1,18 @@
+{
+    "OSECS System": {
+        "prefix": "osecs_system",
+        "body": [
+            "import { System } from 'osecs';",
+            "",
+            "export class ${1:SystemName} extends System {",
+            "    order = ${2:1};",
+            "",
+            "    run(delta: number): void {",
+            "        // todo",
+            "    }",
+            "}"
+        ],
+        "description": "Snippet for creating an OSECS class"
+    }
+}
+
