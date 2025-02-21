@@ -121,6 +121,7 @@ AddPackage --foreign nvidia-prime-rtd3pm # Configure your discrete NVIDIA GPU to
 AddPackage --foreign vtsls # LSP wrapper for the TypeScript extension from Visual Studio Code
 AddPackage --foreign xcursor-simp1e-dark # An aesthetic cursor theme
 AddPackage --foreign xcursor-simp1e-nord-dark # An aesthetic cursor theme
+IgnorePackage --foreign yay
 AddPackage --foreign yay-bin # Yet another yogurt. Pacman wrapper and AUR helper written in go. Pre-compiled.
 AddPackage --foreign yay-bin-debug # Detached debugging symbols for yay-bin
 AddPackage --foreign zoom # Video Conferencing and Web Conferencing Service

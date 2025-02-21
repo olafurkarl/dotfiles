@@ -20,3 +20,5 @@ zsh/.zcompdump
 .config/Code - OSS
 .config/aseprite
 .config/chromium
+.config/discordcanary
+.config/menus/applications-merged
