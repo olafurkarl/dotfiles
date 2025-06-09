@@ -224,7 +224,7 @@ awful.screen.connect_for_each_screen(function(s)
 	s.quake = lain.util.quake({
 		app = terminalt,
 		argname = "--class %s",
-		height = 0.8,
+		height = 1.0,
 		followtag = true,
 		maximized = true,
 	})
