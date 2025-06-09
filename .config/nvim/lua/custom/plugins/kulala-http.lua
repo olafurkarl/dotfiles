@@ -25,4 +25,5 @@ return {
 			require("kulala").copy()
 		end, { desc = "[r]est: [c]opy as curl" })
 	end,
+	ft = { "http" },
 }

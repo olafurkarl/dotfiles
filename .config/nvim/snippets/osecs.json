@@ -13,6 +13,16 @@
             "}"
         ],
         "description": "Snippet for creating an OSECS class"
+    },
+    "OSECS Component": {
+        "prefix": "osecs_component",
+        "body": [
+            "import { Component, field, RegisterComponent } from 'osecs';",
+            "",
+            "@RegisterComponent",
+            "export class ${1:ComponentName} extends Component {",
+            "}"
+        ],
+        "description": "Snippet for creating an OSECS Component"
     }
 }
-
