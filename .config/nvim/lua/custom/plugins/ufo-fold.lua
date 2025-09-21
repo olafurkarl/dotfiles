@@ -1,7 +1,7 @@
 return {
 	"kevinhwang91/nvim-ufo",
 
-	dependencies = { "kevinhwang91/promise-async" },
+	dependencies = { "kevinhwang91/promise-async", "nvim-treesitter/nvim-treesitter" },
 	--    event = 'VeryLazy',   -- You can make it lazy-loaded via VeryLazy, but comment out if thing doesn't work
 	init = function()
 		vim.o.foldlevel = 99
