@@ -704,6 +704,7 @@ require("lazy").setup({
 				typescriptreact = { "prettierd", "prettier", stop_after_first = true },
 				json = { "prettierd", "prettier", stop_after_first = true },
 				jsonc = { "prettierd", "prettier", stop_after_first = true },
+				css = { previewer = "prettierd", "prettier", stop_after_first = true },
 			},
 		},
 	},
@@ -932,6 +933,7 @@ require("lazy").setup({
 				"vimdoc",
 				"typescript",
 				"tsx",
+				"yaml",
 			},
 			-- Autoinstall languages that are not installed
 			auto_install = true,
