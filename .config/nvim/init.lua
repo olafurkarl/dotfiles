@@ -361,6 +361,7 @@ require("lazy").setup({
 					ignore_current_buffer = true,
 					only_cwd = true,
 					sort_lastused = true,
+					sort_mru = true,
 				})
 			end, { desc = "[ ] Find existing buffers" })
 

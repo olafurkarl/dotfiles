@@ -5,11 +5,13 @@ return {
 		"nvim-lua/plenary.nvim",
 		"antoinemadec/FixCursorHold.nvim",
 		"nvim-treesitter/nvim-treesitter",
-		"marilari88/neotest-vitest",
+		{
+			"marilari88/neotest-vitest",
+			commit = "a6099e1fb55a2c2851da3dd0f4d510af9a234c92",
+		},
 	},
 	config = function()
 		local neotest = require("neotest")
-		local neoTestVitest = require("neotest-vitest")
 
 		local setup_complete = false
 
@@ -64,9 +66,15 @@ return {
 			neotest.run.run({ strategy = "dap" })
 		end
 
+		local function output()
+			possibly_init()
+			neotest.output.open({ enter = true, auto_close = false })
+		end
+
 		vim.keymap.set("n", "<leader>Tr", test_nearest, { desc = "[T]est [r]un" })
 		vim.keymap.set("n", "<leader>Tw", watch_tests, { desc = "[T]est [w]atch" })
 		vim.keymap.set("n", "<leader>TR", test_all, { desc = "[T]est [R]un all" })
 		vim.keymap.set("n", "<leader>Td", debug_nearest, { desc = "[T]est [d]ebug" })
+		vim.keymap.set("n", "<leader>To", output, { desc = "[T]est [o]utput" })
 	end,
 }

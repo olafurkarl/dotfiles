@@ -3,6 +3,7 @@ return {
 	opts = {},
 
 	config = function()
+		require("kulala").setup()
 		-- require("kulala.api").on("after_request", function(data)
 		--
 		-- end)
