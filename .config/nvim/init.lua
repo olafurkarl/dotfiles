@@ -423,15 +423,19 @@ require("lazy").setup({
 		},
 		opts = {},
 		config = function()
-			-- Make signature appear for typescript files once cursor has hovered for a certain time
-			-- vim.api.nvim_create_autocmd("CursorHold", {
-			-- 	pattern = "*.ts",
-			--
-			-- 	callback = function(event)
-			-- 		vim.print(event)
-			-- 		vim.lsp.buf.hover()
-			-- 	end,
-			-- })
+			vim.api.nvim_create_autocmd("CursorHold", {
+				callback = function()
+					if require("cmp").visible() then
+						return
+					end
+					local diags = vim.diagnostic.get(0, { lnum = vim.fn.line(".") - 1 })
+					if #diags > 0 then
+						vim.diagnostic.open_float()
+					else
+						vim.lsp.buf.hover()
+					end
+				end,
+			})
 
 			-- require("workspace-diagnostics").setup({
 			-- 	workspace_files = function()
@@ -498,7 +502,7 @@ require("lazy").setup({
 					-- or a suggestion from your LSP for this to activate.
 					map("<leader>ca", vim.lsp.buf.code_action, "[C]ode [A]ction", { "n", "x" })
 
-					map("<leader>cs", vim.lsp.buf.hover, "[C]ode [S]ignature", "n")
+					map("<leader>cs", vim.lsp.buf.signature_help, "[C]ode [S]ignature", "n")
 
 					-- WARN: This is not Goto Definition, this is Goto Declaration.
 					--  For example, in C this would take you to the header.
@@ -565,6 +569,7 @@ require("lazy").setup({
 			local servers = {
 				ts_ls = {
 					root_dir = require("lspconfig.util").root_pattern(".git", "package.json"),
+					single_file_support = false,
 					on_attach = function(client, bufnr)
 						-- require("workspace-diagnostics").populate_workspace_diagnostics(client, bufnr)
 						client.notify("workspace/didChangeConfiguration", {
@@ -706,7 +711,7 @@ require("lazy").setup({
 				typescriptreact = { "prettierd", "prettier", stop_after_first = true },
 				json = { "prettierd", "prettier", stop_after_first = true },
 				jsonc = { "prettierd", "prettier", stop_after_first = true },
-				css = { previewer = "prettierd", "prettier", stop_after_first = true },
+				css = { "prettierd", "prettier", stop_after_first = true },
 			},
 		},
 	},
@@ -741,19 +746,15 @@ require("lazy").setup({
 						region_check_events = "InsertEnter",
 						delete_check_events = "InsertLeave",
 					})
-					vim.api.nvim_set_keymap("i", "<C-n>", "<Plug>luasnip-next-choice", {})
-					vim.api.nvim_set_keymap("s", "<C-n>", "<Plug>luasnip-next-choice", {})
-					vim.api.nvim_set_keymap("i", "<C-p>", "<Plug>luasnip-prev-choice", {})
-					vim.api.nvim_set_keymap("s", "<C-p>", "<Plug>luasnip-prev-choice", {})
 					vim.keymap.set({ "i" }, "<C-K>", function()
 						ls.expand()
 					end, { silent = true })
 
-					vim.keymap.set({ "i", "s" }, "<C-p>", function()
+					vim.keymap.set({ "i", "s" }, "<C-n>", function()
 						ls.jump(1)
 					end, { silent = true })
 
-					vim.keymap.set({ "i", "s" }, "<C-n>", function()
+					vim.keymap.set({ "i", "s" }, "<C-p>", function()
 						ls.jump(-1)
 					end, { silent = true })
 
