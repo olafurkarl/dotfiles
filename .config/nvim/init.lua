@@ -578,7 +578,7 @@ require("lazy").setup({
 			--        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
 			local servers = {
 				ts_ls = {
-					root_dir = require("lspconfig.util").root_pattern(".git", "package.json"),
+					root_dir = require("lspconfig.util").root_pattern("pnpm-workspace.yaml", ".git"),
 					single_file_support = false,
 					on_attach = function(client, bufnr)
 						-- require("workspace-diagnostics").populate_workspace_diagnostics(client, bufnr)
