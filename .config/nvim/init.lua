@@ -432,7 +432,17 @@ require("lazy").setup({
 					if #diags > 0 then
 						vim.diagnostic.open_float()
 					else
-						vim.lsp.buf.hover()
+						local clients = vim.lsp.get_clients({ bufnr = 0, method = "textDocument/hover" })
+						if #clients == 0 then
+							return
+						end
+						local params = vim.lsp.util.make_position_params()
+						vim.lsp.buf_request(0, "textDocument/hover", params, function(err, result, ctx, config)
+							if err or not result or not result.contents then
+								return
+							end
+							vim.lsp.handlers["textDocument/hover"](err, result, ctx, config)
+						end)
 					end
 				end,
 			})
