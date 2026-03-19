@@ -1,0 +1,9 @@
+#!/bin/bash
+# Write filename and optional line number to a temp file,
+# then tell the parent nvim to close the lazygit float and open it.
+FILE="$1"
+LINE="${2:-}"
+TMPFILE=$(mktemp)
+echo "$FILE" > "$TMPFILE"
+[ -n "$LINE" ] && echo "$LINE" >> "$TMPFILE"
+nvr --remote-send "<C-\><C-n>:lua LazygitEditFile('$TMPFILE')<CR>"

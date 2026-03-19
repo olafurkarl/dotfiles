@@ -436,7 +436,7 @@ require("lazy").setup({
 						if #clients == 0 then
 							return
 						end
-						local params = vim.lsp.util.make_position_params()
+						local params = vim.lsp.util.make_position_params(0, clients[1].offset_encoding)
 						vim.lsp.buf_request(0, "textDocument/hover", params, function(err, result, ctx, config)
 							if err or not result or not result.contents then
 								return
@@ -577,6 +577,12 @@ require("lazy").setup({
 			--  - settings (table): Override the default settings passed when initializing the server.
 			--        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
 			local servers = {
+				eslint = {
+					settings = {
+						workingDirectory = { mode = "auto" },
+						run = "onSave",
+					},
+				},
 				ts_ls = {
 					root_dir = require("lspconfig.util").root_pattern("pnpm-workspace.yaml", ".git"),
 					single_file_support = false,
