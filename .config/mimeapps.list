@@ -5,6 +5,8 @@ x-scheme-handler/discord-464069837237518357=discord-464069837237518357.desktop
 inode/directory=pcmanfm.desktop
 application/pdf=firefox.desktop
 text/x-nfo=code-oss.desktop
+audio/x-ms-wma=mpv.desktop
 
 [Added Associations]
 text/x-nfo=code-oss.desktop;userapp-code-CQI942.desktop;userapp-code-492742.desktop;vim.desktop;
+audio/x-ms-wma=mpv.desktop;

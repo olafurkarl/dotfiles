@@ -37,3 +37,7 @@ zsh/.zsh_history
 .config/SpeedCrunch/SpeedCrunch.ini
 .config/SpeedCrunch/SpeedCrunch.ini
 .config/gtk-3.0
+/.config/go/telemetry/local
+/.config/polyphone
+/.config/unity3d
+/.config/youtui
