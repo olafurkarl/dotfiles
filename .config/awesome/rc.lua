@@ -18,6 +18,7 @@ local menubar = require("menubar")
 local hotkeys_popup = require("awful.hotkeys_popup")
 local lain = require("lain")
 
+
 -- local battery_widget = require("battery-widget")
 -- local battery = battery_widget({
 -- 	ac = "AC",
@@ -83,6 +84,42 @@ terminal = "kitty"
 terminalt = "kitty"
 editor = os.getenv("EDITOR") or "nano"
 editor_cmd = terminal .. " -e " .. editor
+
+-- Quake terminal toggle
+local quake_client = nil
+client.connect_signal("manage", function(c)
+	if c.instance == "QuakeDD" or c.class == "QuakeDD" then
+		quake_client = c
+		c.floating = true
+		c.maximized = true
+		c.ontop = true
+		c.skip_taskbar = true
+		c:connect_signal("unmanage", function()
+			quake_client = nil
+		end)
+	end
+end)
+
+local function quake_toggle()
+	for _, c in ipairs(client.get()) do
+		if c.class == "Rofi" then return end
+	end
+	if quake_client and quake_client.valid then
+		quake_client.hidden = not quake_client.hidden
+		if not quake_client.hidden then
+			quake_client:move_to_tag(awful.screen.focused().selected_tag)
+			quake_client:raise()
+			client.focus = quake_client
+		else
+			awful.client.focus.history.previous()
+			if client.focus then
+				client.focus:raise()
+			end
+		end
+	else
+		awful.spawn("kitty --class QuakeDD")
+	end
+end
 
 -- Default modkey.
 -- Usually, Mod4 is the key with a logo between Control and Alt.
@@ -220,15 +257,6 @@ client.connect_signal("sound", function(pid)
 end)
 
 awful.screen.connect_for_each_screen(function(s)
-	-- Quake terminal
-	s.quake = lain.util.quake({
-		app = terminalt,
-		argname = "--class %s",
-		height = 1.0,
-		followtag = true,
-		maximized = true,
-	})
-
 	-- Wallpaper
 	set_wallpaper(s)
 
@@ -426,7 +454,7 @@ globalkeys = gears.table.join(
 	awful.key({ modkey }, "space", function()
 		awful.spawn(terminalt)
 	end, { description = "open a terminal", group = "launcher" }),
-	awful.key({ modkey, "Shift" }, "r", awesome.restart, { description = "reload awesome", group = "awesome" }),
+	awful.key({ modkey, "Shift" }, "r", awesome.restart, { description = "restart awesomewm", group = "awesome" }),
 
 	awful.key({ modkey }, "l", function()
 		awful.tag.incmwfact(0.05)
@@ -483,11 +511,11 @@ globalkeys = gears.table.join(
 	end, { description = "show the menubar", group = "launcher" }),
 	-- Quake terminal
 	awful.key({}, "Pause", function()
-		awful.screen.focused().quake:toggle()
+		quake_toggle()
 	end, { description = "show quake menu", group = "terminal" }),
 
 	awful.key({}, "#105", function()
-		awful.screen.focused().quake:toggle()
+		quake_toggle()
 	end, { description = "show quake menu", group = "terminal" }),
 
 	awful.key({}, "Print", function()
