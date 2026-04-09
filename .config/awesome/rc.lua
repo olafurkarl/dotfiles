@@ -520,7 +520,22 @@ globalkeys = gears.table.join(
 
 	awful.key({}, "Print", function()
 		awful.util.spawn_with_shell("import /home/olik/screenshots/screenshot-`date +%s`.png")
-	end, { description = "take screenshot", group = "util" })
+	end, { description = "take screenshot", group = "util" }),
+
+	-- Rename current tag
+	awful.key({ modkey }, "F2", function()
+		local tag = awful.screen.focused().selected_tag
+		if not tag then return end
+		awful.prompt.run({
+			prompt = "Rename tag: ",
+			textbox = awful.screen.focused().mypromptbox.widget,
+			text = tag.name,
+			exe_callback = function(new_name)
+				if not new_name or #new_name == 0 then return end
+				tag.name = new_name
+			end,
+		})
+	end, { description = "rename current tag", group = "tag" })
 )
 
 clientkeys = gears.table.join(
