@@ -769,7 +769,9 @@ awful.rules.rules = {
 
 	{
 		rule = { instance = "Toolkit", class = "firefox" },
-		properties = { tags = { "1", "2", "3", "4", "5", "6", "7", "8", "9" } },
+		callback = function(c)
+			c:tags(c.screen.tags)
+		end,
 	},
 
 	-- Floating clients.
