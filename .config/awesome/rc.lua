@@ -256,6 +256,109 @@ client.connect_signal("sound", function(pid)
 	end
 end)
 
+-- {{{ Window recording
+local recording_state = { active = false, pid = nil, file = nil }
+local recording_indicators = {}
+
+local function make_recording_indicator()
+	local w = wibox.widget({
+		{
+			markup = '<span foreground="#ff3333" size="large">●</span>',
+			widget = wibox.widget.textbox,
+		},
+		left = 6,
+		right = 6,
+		widget = wibox.container.margin,
+		visible = false,
+	})
+	table.insert(recording_indicators, w)
+	return w
+end
+
+local function set_recording_indicator_visible(v)
+	for _, w in ipairs(recording_indicators) do
+		w.visible = v
+	end
+end
+
+local function start_recording()
+	if recording_state.active then return end
+
+	naughty.notify({
+		title = "Record window",
+		text = "Click the window to record (Esc to cancel)",
+		timeout = 3,
+	})
+
+	-- xwininfo grabs the pointer with a crosshair cursor while waiting for the click.
+	-- The sleep gives awesomewm time to release its keybind grab; without it
+	-- xwininfo's XGrabPointer fails and the command exits immediately.
+	awful.spawn.easy_async_with_shell(
+		"sleep 0.3 && xwininfo | awk '/Window id:/ {print $4}'",
+		function(stdout, _, _, exit_code)
+			local wid = stdout:gsub("%s+", "")
+			if exit_code ~= 0 or wid == "" then
+				naughty.notify({ title = "Record window", text = "Cancelled" })
+				return
+			end
+
+			local dir = os.getenv("HOME") .. "/recordings"
+			os.execute("mkdir -p " .. dir)
+			local file = dir .. "/RECORD-" .. os.date("%Y-%m-%d_%H-%M-%S") .. ".mp4"
+
+			recording_state.active = true
+			recording_state.file = file
+			set_recording_indicator_visible(true)
+
+			recording_state.pid = awful.spawn.easy_async(
+				{ "ffmpeg", "-y", "-f", "x11grab", "-framerate", "30",
+				  "-window_id", wid, "-i", ":0.0", file },
+				function(_, stderr, _, _)
+					set_recording_indicator_visible(false)
+					recording_state.active = false
+					recording_state.pid = nil
+
+					local f = io.open(file, "rb")
+					local size = 0
+					if f then
+						size = f:seek("end") or 0
+						f:close()
+					end
+
+					if size > 0 then
+						naughty.notify({
+							title = "Recording saved",
+							text = file,
+							timeout = 5,
+						})
+					else
+						naughty.notify({
+							preset = naughty.config.presets.critical,
+							title = "Recording failed",
+							text = (stderr and stderr ~= "") and stderr or "no output produced",
+							timeout = 5,
+						})
+					end
+				end
+			)
+		end
+	)
+end
+
+local function stop_recording()
+	if not recording_state.active or not recording_state.pid then return end
+	awful.spawn({ "kill", "-INT", tostring(recording_state.pid) })
+end
+
+local function toggle_recording()
+	if recording_state.active then
+		stop_recording()
+	else
+		start_recording()
+	end
+end
+-- }}}
+
 awful.screen.connect_for_each_screen(function(s)
 	-- Wallpaper
 	set_wallpaper(s)
@@ -388,6 +491,7 @@ awful.screen.connect_for_each_screen(function(s)
 		s.mytasklist, -- Middle widget
 		{ -- Right widgets
 			layout = wibox.layout.fixed.horizontal,
+			make_recording_indicator(),
 			mykeyboardlayout,
 			wibox.widget.systray(),
 			mytextclock,
@@ -521,6 +625,10 @@ globalkeys = gears.table.join(
 	awful.key({}, "Print", function()
 		awful.util.spawn_with_shell("import /home/olik/screenshots/screenshot-`date +%s`.png")
 	end, { description = "take screenshot", group = "util" }),
+
+	awful.key({ "Shift" }, "Print", function()
+		toggle_recording()
+	end, { description = "record window (toggle)", group = "util" }),
 
 	-- Rename current tag
 	awful.key({ modkey }, "F2", function()
