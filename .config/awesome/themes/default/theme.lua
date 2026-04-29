@@ -45,14 +45,9 @@ theme.emitting_sound = "#00FF00"
 -- Example:
 --theme.taglist_bg_focus = "#ff0000"
 
--- Generate taglist squares:
-local taglist_square_size = dpi(4)
-theme.taglist_squares_sel = theme_assets.taglist_squares_sel(
-    taglist_square_size, theme.fg_normal
-)
-theme.taglist_squares_unsel = theme_assets.taglist_squares_unsel(
-    taglist_square_size, theme.fg_normal
-)
+-- Occupancy is rendered by the rc.lua taglist widget_template (the index
+-- square fills when the tag has clients), so the built-in square overlays
+-- are intentionally left unset.
 
 -- Variables set for theming notifications:
 -- notification_font
