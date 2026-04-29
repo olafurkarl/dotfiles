@@ -232,6 +232,101 @@ local tasklist_buttons = gears.table.join(
 	end)
 )
 
+-- {{{ Tag name persistence
+local tag_names_file = gears.filesystem.get_cache_dir() .. "tag-names"
+
+local function load_tag_names()
+	local names = {}
+	local f = io.open(tag_names_file, "r")
+	if not f then return names end
+	for line in f:lines() do
+		local s, t, name = line:match("^(%d+)\t(%d+)\t(.*)$")
+		if s and t then
+			local si = tonumber(s)
+			names[si] = names[si] or {}
+			names[si][tonumber(t)] = name
+		end
+	end
+	f:close()
+	return names
+end
+
+local function save_tag_names()
+	local f = io.open(tag_names_file, "w")
+	if not f then return end
+	for s in screen do
+		for i, t in ipairs(s.tags) do
+			if t.name and t.name ~= "" then
+				f:write(string.format("%d\t%d\t%s\n", s.index, i, t.name))
+			end
+		end
+	end
+	f:close()
+end
+
+local saved_tag_names = load_tag_names()
+-- }}}
+
+-- Paint a taglist row's number square.
+--   selected (current tag): accent fill + white digit
+--   occupied (has clients): light fill + dark digit
+--   empty:                  no fill + dim digit
+-- Called from both create_callback and update_callback; the taglist library
+-- triggers update_callback on tagged/untagged and on property::selected.
+function paint_taglist_row(self, t, index)
+	-- bg/fg drive the number square; border tracks the same state so the
+	-- icon strip's outline matches whether the tag is selected/occupied.
+	local bg, fg, border
+	if t.selected then
+		bg, fg, border = "#5fafff", "#ffffff", "#5fafff"
+	elseif #t:clients() > 0 then
+		bg, fg, border = "#dddddd", "#222222", "#dddddd"
+	else
+		bg, fg, border = nil, "#888888", "#dddddd"
+	end
+	local occ = self:get_children_by_id("occupancy_role")[1]
+	if occ then occ.bg = bg end
+	local idx = self:get_children_by_id("index_role")[1]
+	if idx then
+		idx.markup = string.format(
+			'<span foreground="%s" weight="bold">%d</span>',
+			fg, index
+		)
+	end
+
+	-- Rebuild the per-client icon row. The taglist re-runs update_callback on
+	-- tagged/untagged signals, so the list stays in sync as windows move.
+	local clist = self:get_children_by_id("clients_role")[1]
+	local count = 0
+	if clist then
+		clist:reset()
+		for _, c in ipairs(t:clients()) do
+			-- Skip the quake terminal: it floats over every tag and would
+			-- pollute every row's icon strip.
+			local quake = c.class == "QuakeDD" or c.instance == "QuakeDD"
+			if c.icon and not quake then
+				clist:add(wibox.widget({
+					{
+						image = c.icon,
+						forced_height = 14,
+						forced_width = 14,
+						widget = wibox.widget.imagebox,
+					},
+					valign = "center",
+					halign = "center",
+					widget = wibox.container.place,
+				}))
+				count = count + 1
+			end
+		end
+	end
+	local cb = self:get_children_by_id("clients_border")[1]
+	if cb then
+		cb.visible = count > 0 or t.has_sound == true
+		cb.shape_border_color = border
+	end
+end
+
 local function set_wallpaper(s)
 	-- Wallpaper
 	if beautiful.wallpaper then
@@ -246,15 +341,6 @@ end
 
 -- Re-set wallpaper when a screen's geometry changes (e.g. different resolution)
 screen.connect_signal("property::geometry", set_wallpaper)
-
-client.connect_signal("sound", function(pid)
-	for i, c in ipairs(client.get()) do
-		-- naughty.notify({text="pid: "..pid.." tostring(c.pid): "..tostring(c.pid)})
-		if pid == tostring(c.pid) then
-			c.first_tag:emit_signal("sound_tag", c.first_tag)
-		end
-	end
-end)
 
 -- {{{ Window recording
 local recording_state = { active = false, pid = nil, file = nil }
@@ -359,12 +445,68 @@ local function toggle_recording()
 end
 -- }}}
 
+-- {{{ Claude Code usage widget
+-- Polls the (undocumented) https://api.anthropic.com/api/oauth/usage endpoint
+-- using the OAuth token from ~/.claude/.credentials.json and renders
+-- "5h N% · 7d N%" with colour thresholds. The endpoint is what /usage uses
+-- internally and is not part of the public API — could break without notice.
+local claude_usage_widgets = {}
+
+local claude_icon_path = gears.filesystem.get_configuration_dir() .. "icons/claude.svg"
+
+local function make_claude_usage_widget()
+	local tb = wibox.widget({
+		markup = '<span foreground="#888888">…</span>',
+		widget = wibox.widget.textbox,
+	})
+	table.insert(claude_usage_widgets, tb)
+
+	local icon = wibox.widget({
+		image = gears.color.recolor_image(claude_icon_path, "#a0c4ff"),
+		forced_height = 14,
+		forced_width = 14,
+		widget = wibox.widget.imagebox,
+	})
+
+	return wibox.widget({
+		{
+			{
+				icon,
+				valign = "center",
+				halign = "center",
+				widget = wibox.container.place,
+			},
+			{
+				{
+					tb,
+					valign = "center",
+					halign = "center",
+					widget = wibox.container.place,
+				},
+				left = 6,
+				widget = wibox.container.margin,
+			},
+			layout = wibox.layout.fixed.horizontal,
+		},
+		left = 8,
+		right = 8,
+		widget = wibox.container.margin,
+	})
+end
+-- }}}
+
 awful.screen.connect_for_each_screen(function(s)
 	-- Wallpaper
 	set_wallpaper(s)
 
-	-- Each screen has its own tag table.
-	awful.tag({ "1", "2", "3", "4", "5", "6", "7", "8", "9" }, s, awful.layout.layouts[2])
+	-- Each screen has its own tag table. Names are blank by default so the
+	-- numerical prefix shown in the taglist (from tag.index) is the only
+	-- number — renaming a tag never erases it.
+	local tags = awful.tag({ "", "", "", "", "", "", "", "", "" }, s, awful.layout.layouts[2])
+	local saved = saved_tag_names[s.index] or {}
+	for i, t in ipairs(tags) do
+		if saved[i] then t.name = saved[i] end
+	end
 
 	-- Create a promptbox for each screen
 	s.mypromptbox = awful.widget.prompt()
@@ -395,48 +537,94 @@ awful.screen.connect_for_each_screen(function(s)
 				color = "#dddddd",
 				widget = wibox.widget.separator,
 			},
-			layout = wibox.layout.fixed.horizontal,
+			layout = wibox.layout.flex.horizontal,
 		},
 		widget_template = {
 			{
 				{
+					-- Number block: square flush with the wibar; filled when the
+					-- tag has clients, transparent otherwise.
+					{
+						{
+							id = "index_role",
+							align = "center",
+							valign = "center",
+							widget = wibox.widget.textbox,
+						},
+						left = 8,
+						right = 8,
+						widget = wibox.container.margin,
+					},
+					id = "occupancy_role",
+					widget = wibox.container.background,
+				},
+				-- Bordered strip of per-client icons + sound indicator. Sits
+				-- flush with the number square (no gap) and stretches to the
+				-- row's height so it lines up with the wibar's top/bottom
+				-- edges. Hidden when the tag has no icons and no sound (set
+				-- in paint_taglist_row).
+				{
 					{
 						{
 							{
-								id = "index_role",
+								id = "clients_role",
+								spacing = 2,
+								layout = wibox.layout.fixed.horizontal,
+							},
+							{
+								id = "sound_role",
+								visible = false,
+								markup = ' <span foreground="#a0c4ff" size="large">♪</span>',
 								widget = wibox.widget.textbox,
 							},
-							margins = 4,
-							widget = wibox.container.margin,
+							layout = wibox.layout.fixed.horizontal,
 						},
-						bg = "#dddddd",
-						shape = gears.shape.circle,
-						widget = wibox.container.background,
-					},
-					{
-						{
-							id = "icon_role",
-							widget = wibox.widget.imagebox,
-						},
-						margins = 2,
+						left = 3,
+						right = 3,
 						widget = wibox.container.margin,
 					},
-					{
-						id = "text_role",
-						widget = wibox.widget.textbox,
-					},
-					layout = wibox.layout.fixed.horizontal,
+					id = "clients_border",
+					shape = gears.shape.rectangle,
+					shape_border_color = "#dddddd",
+					shape_border_width = 1,
+					widget = wibox.container.background,
 				},
-				left = 18,
-				right = 18,
-				widget = wibox.container.margin,
+				{
+					forced_width = 6,
+					widget = wibox.container.background,
+				},
+				{
+					{
+						id = "icon_role",
+						widget = wibox.widget.imagebox,
+					},
+					margins = 2,
+					widget = wibox.container.margin,
+				},
+				{
+					id = "text_role",
+					widget = wibox.widget.textbox,
+				},
+				{
+					forced_width = 10,
+					widget = wibox.container.background,
+				},
+				layout = wibox.layout.fixed.horizontal,
 			},
 			id = "background_role",
 			widget = wibox.container.background,
-			-- Add support for hover colors and an index label
-			create_callback = function(self, t, index, tagsList)
-				t:connect_signal("sound_tag", function(tag)
-					self.bg = "#2c3635"
+			create_callback = function(self, t, index, _)
+				paint_taglist_row(self, t, index)
+
+				local sw = self:get_children_by_id("sound_role")[1]
+				if sw then sw.visible = t.has_sound == true end
+				t:connect_signal("property::has_sound", function()
+					local s2 = self:get_children_by_id("sound_role")[1]
+					if s2 then s2.visible = t.has_sound == true end
+					-- Border visibility now depends on has_sound too, repaint
+					-- so an empty tag that starts/stops emitting audio shows
+					-- or hides the border accordingly.
+					paint_taglist_row(self, t, index)
 				end)
 
 				self:connect_signal("mouse::enter", function()
@@ -451,6 +639,9 @@ awful.screen.connect_for_each_screen(function(s)
 						self.bg = self.backup
 					end
 				end)
+			end,
+			update_callback = function(self, t, index, _)
+				paint_taglist_row(self, t, index)
 			end,
 		},
 		buttons = taglist_buttons,
@@ -472,10 +663,9 @@ awful.screen.connect_for_each_screen(function(s)
 		layout = wibox.layout.align.horizontal,
 		{ -- Left widgets
 			layout = wibox.layout.fixed.horizontal,
-			-- mylauncher,
-			s.mytaglist,
 			s.mypromptbox,
 		},
+		s.mytaglist, -- Middle: expands to fill the bar so flex rows distribute evenly
 		{ -- Right widgets
 			layout = wibox.layout.fixed.horizontal,
 		},
@@ -494,6 +684,7 @@ awful.screen.connect_for_each_screen(function(s)
 			make_recording_indicator(),
 			mykeyboardlayout,
 			wibox.widget.systray(),
+			make_claude_usage_widget(),
 			mytextclock,
 			battery,
 			s.mylayoutbox,
@@ -630,20 +821,53 @@ globalkeys = gears.table.join(
 		toggle_recording()
 	end, { description = "record window (toggle)", group = "util" }),
 
-	-- Rename current tag
+	-- Rename current tag. The numerical prefix is fixed and shown in the
+	-- prompt label — only the custom suffix is editable.
 	awful.key({ modkey }, "F2", function()
 		local tag = awful.screen.focused().selected_tag
 		if not tag then return end
 		awful.prompt.run({
-			prompt = "Rename tag: ",
+			prompt = tostring(tag.index) .. ": ",
 			textbox = awful.screen.focused().mypromptbox.widget,
-			text = tag.name,
+			text = tag.name or "",
 			exe_callback = function(new_name)
-				if not new_name or #new_name == 0 then return end
-				tag.name = new_name
+				tag.name = new_name or ""
+				save_tag_names()
 			end,
 		})
-	end, { description = "rename current tag", group = "tag" })
+	end, { description = "rename current tag", group = "tag" }),
+
+	-- Resize focused client to exact pixel dimensions
+	awful.key({ modkey }, "F3", function()
+		local c = client.focus
+		if not c then return end
+		awful.prompt.run({
+			prompt = "Resize (WxH or WxH+X+Y): ",
+			textbox = awful.screen.focused().mypromptbox.widget,
+			text = c.width .. "x" .. c.height,
+			exe_callback = function(input)
+				if not input or #input == 0 then return end
+				local w, h, x, y = input:match("^(%d+)x(%d+)%+(%-?%d+)%+(%-?%d+)$")
+				if not w then
+					w, h = input:match("^(%d+)x(%d+)$")
+				end
+				if not w then return end
+				c.floating = true
+				local geo = { width = tonumber(w), height = tonumber(h) }
+				if x then geo.x = tonumber(x) end
+				if y then geo.y = tonumber(y) end
+				c:geometry(geo)
+			end,
+		})
+	end, { description = "resize focused client to exact pixels", group = "client" }),
+
+	-- Resize focused client to 810x1531
+	awful.key({ modkey }, "F4", function()
+		local c = client.focus
+		if not c then return end
+		c.floating = true
+		c:geometry({ width = 810, height = 1531 })
+	end, { description = "resize focused client to 810x1531", group = "client" })
 )
 
 clientkeys = gears.table.join(
@@ -816,6 +1040,22 @@ awful.rules.rules = {
 -- }}}
 
 -- {{{ Signals
+-- Re-run paint_taglist_row when clients appear, vanish, or finally provide
+-- their icon. The taglist library handles tagged/untagged on its own, but
+-- those don't fire reliably for late-arriving icons or for unmanage. Emitting
+-- a no-op tag signal that the taglist already listens to is the cheapest way
+-- to force a row repaint.
+local function bump_taglists()
+	for s in screen do
+		for _, t in ipairs(s.tags) do
+			t:emit_signal("property::name")
+		end
+	end
+end
+client.connect_signal("manage", bump_taglists)
+client.connect_signal("unmanage", bump_taglists)
+client.connect_signal("property::icon", bump_taglists)
+
 -- Signal function to execute when a new client appears.
 client.connect_signal("manage", function(c)
 	-- Set the windows at the slave,
@@ -885,24 +1125,225 @@ client.connect_signal("unfocus", function(c)
 	c.border_color = beautiful.border_normal
 end)
 
--- gears.timer {
---     timeout   = 1,
---     call_now  = true,
---     autostart = true,
---     callback  = function()
---         awful.spawn.easy_async(
---             {"sh", "-c", "pacmd list-sink-inputs | grep application.process.id | cut -d '\"' -f 2"},
---             function(out)
---                 for w in out:gmatch("(%d+)") do
---                     if w ~= nil then
---                         client.emit_signal("sound", w)
---                     end
---                 end
---             end
---         )
---     end
--- }
---
+-- {{{ Per-tag audio indicator
+-- Polls pactl for currently-playing sink-inputs (State: RUNNING) and flips
+-- tag.has_sound on each tag whose clients are producing audio.
+-- Returns { [pid] = { media_name1, media_name2, ... }, ... } for every
+-- currently-playing sink-input. media.name is the title the application sets
+-- on the stream (e.g. the playing tab's title for Firefox/Chromium); we use it
+-- to narrow down which window is actually producing the sound when several
+-- share the same PID.
+local function parse_running_pids(stdout)
+	local pids = {}
+	local current = nil
+	local function flush()
+		-- Active iff PulseAudio State == RUNNING or PipeWire-pulse Corked == no.
+		-- Treat unknown/missing playback state as active so we don't miss audio
+		-- on backends that omit both fields.
+		if current and current.pid and current.playing ~= false then
+			local list = pids[current.pid] or {}
+			table.insert(list, current.media or "")
+			pids[current.pid] = list
+		end
+	end
+	for line in stdout:gmatch("[^\n]+") do
+		if line:match("^Sink Input #") then
+			flush()
+			current = { playing = nil }
+		elseif current then
+			local state = line:match("^%s*State:%s*(%S+)")
+			if state then current.playing = (state == "RUNNING") end
+			local corked = line:match("^%s*Corked:%s*(%S+)")
+			if corked then current.playing = (corked == "no") end
+			local pid = line:match('application%.process%.id = "(%d+)"')
+			if pid then current.pid = pid end
+			local media = line:match('media%.name = "(.-)"')
+			if media then current.media = media end
+		end
+	end
+	flush()
+	return pids
+end
+
+local function ppid_of(pid)
+	local f = io.open("/proc/" .. pid .. "/status", "r")
+	if not f then return nil end
+	local ppid
+	for line in f:lines() do
+		local p = line:match("^PPid:%s*(%d+)")
+		if p then ppid = p; break end
+	end
+	f:close()
+	return ppid
+end
+
+local function refresh_tag_sound()
+	awful.spawn.easy_async({ "pactl", "list", "sink-inputs" }, function(stdout)
+		local pids = parse_running_pids(stdout)
+
+		-- Group clients by PID. Multiple windows can share a PID
+		-- (e.g. several Firefox windows under one Firefox process). We pick
+		-- the actually-playing window per stream by matching the sink-input's
+		-- media.name against client window titles; if no title match, fall
+		-- back to all clients with that PID.
+		local clients_by_pid = {}
+		for _, c in ipairs(client.get()) do
+			if c.pid then
+				local key = tostring(c.pid)
+				local list = clients_by_pid[key] or {}
+				table.insert(list, c)
+				clients_by_pid[key] = list
+			end
+		end
+
+		local tags_with_sound = {}
+		for pid, media_names in pairs(pids) do
+			-- Walk up the process tree until we hit a known window PID.
+			local clients
+			local cur = pid
+			for _ = 1, 20 do
+				if clients_by_pid[cur] then
+					clients = clients_by_pid[cur]
+					break
+				end
+				local parent = ppid_of(cur)
+				if not parent or parent == "0" or parent == cur then break end
+				cur = parent
+			end
+
+			if clients then
+				-- Narrow to clients whose window title contains any of the
+				-- stream's media.name strings. If nothing matches, fall back
+				-- to every client with that PID.
+				local narrowed = {}
+				for _, c in ipairs(clients) do
+					for _, name in ipairs(media_names) do
+						if name ~= "" and c.name and c.name:find(name, 1, true) then
+							table.insert(narrowed, c)
+							break
+						end
+					end
+				end
+				local matches = (#narrowed > 0) and narrowed or clients
+				for _, c in ipairs(matches) do
+					for _, t in ipairs(c:tags()) do
+						tags_with_sound[t] = true
+					end
+				end
+			end
+		end
+
+		for s in screen do
+			for _, t in ipairs(s.tags) do
+				local now = tags_with_sound[t] == true
+				if t.has_sound ~= now then
+					t.has_sound = now
+					t:emit_signal("property::has_sound")
+				end
+			end
+		end
+	end)
+end
+
+gears.timer({
+	timeout = 2,
+	autostart = true,
+	call_now = true,
+	callback = refresh_tag_sound,
+})
+-- }}}
+
+-- {{{ Claude Code usage poller
+-- The /api/oauth/usage endpoint is rate-limited; polling more often than a
+-- few minutes returns 429. The poll interval and timestamp are persisted to
+-- ~/.cache/awesome so awesome restarts don't restart the backoff window —
+-- if we fetched 30s ago and you restart, we wait the remaining time instead
+-- of hammering the endpoint again.
+local CLAUDE_POLL_INTERVAL = 300
+local claude_cache_file = gears.filesystem.get_cache_dir() .. "claude-usage"
+local last_claude_markup = '<span foreground="#888888">…</span>'
+local last_claude_fetch = 0
+
+local function load_claude_cache()
+	local f = io.open(claude_cache_file, "r")
+	if not f then return end
+	local ts = f:read("*l")
+	local markup = f:read("*a")
+	f:close()
+	if ts then last_claude_fetch = tonumber(ts) or 0 end
+	if markup and markup ~= "" then last_claude_markup = markup end
+end
+
+local function save_claude_cache()
+	local f = io.open(claude_cache_file, "w")
+	if not f then return end
+	f:write(tostring(last_claude_fetch), "\n", last_claude_markup)
+	f:close()
+end
+
+local function paint_claude_widgets()
+	for _, w in ipairs(claude_usage_widgets) do
+		w.markup = last_claude_markup
+	end
+end
+
+local function refresh_claude_usage()
+	local cmd = [[
+		TOKEN=$(jq -r '.claudeAiOauth.accessToken' "$HOME/.claude/.credentials.json" 2>/dev/null) || exit 1
+		[ -n "$TOKEN" ] && [ "$TOKEN" != "null" ] || exit 1
+		curl -sS --max-time 5 \
+			-H "Authorization: Bearer $TOKEN" \
+			-H "anthropic-beta: oauth-2025-04-20" \
+			"https://api.anthropic.com/api/oauth/usage"
+	]]
+	awful.spawn.easy_async_with_shell(cmd, function(stdout)
+		local five = stdout:match('"five_hour"%s*:%s*{[^}]-"utilization"%s*:%s*([%-%d%.]+)')
+		local seven = stdout:match('"seven_day"%s*:%s*{[^}]-"utilization"%s*:%s*([%-%d%.]+)')
+		if five and seven then
+			local function color(p)
+				if p >= 90 then return "#ff6b6b"
+				elseif p >= 75 then return "#ffd166"
+				else return "#a0c4ff" end
+			end
+			local f, s = tonumber(five), tonumber(seven)
+			last_claude_markup = string.format(
+				'<span foreground="#aaaaaa">5h </span><span foreground="%s">%d%%</span><span foreground="#666666"> · </span><span foreground="#aaaaaa">7d </span><span foreground="%s">%d%%</span>',
+				color(f), math.floor(f + 0.5),
+				color(s), math.floor(s + 0.5)
+			)
+			last_claude_fetch = os.time()
+			save_claude_cache()
+		end
+		paint_claude_widgets()
+	end)
+end
+
+load_claude_cache()
+paint_claude_widgets()
+
+local age = os.time() - last_claude_fetch
+if age >= CLAUDE_POLL_INTERVAL then
+	-- Cache is stale, refresh immediately.
+	refresh_claude_usage()
+	gears.timer({
+		timeout = CLAUDE_POLL_INTERVAL,
+		autostart = true,
+		callback = refresh_claude_usage,
+	})
+else
+	-- Cache is fresh: schedule the first refresh for when it expires, then
+	-- fall back to the regular interval.
+	gears.timer.start_new(CLAUDE_POLL_INTERVAL - age, function()
+		refresh_claude_usage()
+		gears.timer({
+			timeout = CLAUDE_POLL_INTERVAL,
+			autostart = true,
+			callback = refresh_claude_usage,
+		})
+		return false
+	end)
+end
+-- }}}
 
 -- prevent urgent from stealing focus, this works but also disabled 'Window' from rofi
 -- awful.ewmh.add_activate_filter(function() return false end, "ewmh")
